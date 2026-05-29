@@ -1,0 +1,21 @@
+{
+  "name": "pi-cloak-secrets",
+  "version": "1.0.0",
+  "description": "Mask secrets in files before they reach the AI — configurable regex cloaking for pi",
+  "keywords": ["pi-package", "pi-extension", "secrets", "privacy", "masking"],
+  "type": "module",
+  "main": "index.ts",
+  "files": [
+    "index.ts",
+    "cloak.json.example",
+    "README.md"
+  ],
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}

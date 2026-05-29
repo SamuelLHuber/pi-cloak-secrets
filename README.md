@@ -22,7 +22,7 @@ pi -e npm:pi-cloak-secrets
 
 ## Configuration
 
-Create `~/.pi/agent/cloak.json` (or the file will be created automatically with defaults):
+Works out of the box — no config file required. To customize, create `~/.pi/agent/cloak.json`:
 
 ```json
 {
@@ -51,6 +51,18 @@ Create `~/.pi/agent/cloak.json` (or the file will be created automatically with 
   ]
 }
 ```
+
+If you define `patterns` in `cloak.json`, they replace the built-in defaults. If you omit `patterns`, the built-in defaults stay active.
+
+### Built-in defaults
+
+Ships with sensible defaults covering the most common secret files:
+
+- `.env*` and `.vars*` — masks everything after `=`
+- `*.opencode.json` and `opencode.json` — masks `apiKey` values
+- `config.toml` — masks `token = ...` values
+- `*.json` / `*.jsonc` — masks Cloudflare Access tokens (`CLOUDFLARE_ACCESS_TEAM_DOMAIN`, `CLOUDFLARE_ACCESS_AUD`)
+- `auth.json` — masks common credential fields (`token`, `apiKey`, `secret`, `password`, `accessToken`, `refreshToken`, `clientSecret`, `idToken`, `sessionToken`, `authorization`)
 
 ### Fields
 

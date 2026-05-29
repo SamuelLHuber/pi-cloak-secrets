@@ -59,7 +59,55 @@ const DEFAULT_CONFIG: CloakConfig = {
   cloakCharacter: "*",
   cloakLength: null,
   tryAllPatterns: true,
-  patterns: [],
+  patterns: [
+    {
+      filePattern: "**/*.env*",
+      cloakPattern: "(=).+",
+      replace: "$1",
+    },
+    {
+      filePattern: "**/*.vars*",
+      cloakPattern: "(=).+",
+      replace: "$1",
+    },
+    {
+      filePattern: "**/*.opencode.json",
+      cloakPattern: "(\"apiKey\"\\s*:\\s*\")[^\"]+",
+      replace: "$1",
+    },
+    {
+      filePattern: "**/opencode.json",
+      cloakPattern: "(\"apiKey\"\\s*:\\s*\")[^\"]+",
+      replace: "$1",
+    },
+    {
+      filePattern: "**/config.toml",
+      cloakPattern: "(token\\s*=\\s*).+",
+      replace: "$1",
+    },
+    {
+      filePattern: ["**/*.json", "**/*.jsonc"],
+      cloakPattern: [
+        {
+          pattern: "(\"(?:CLOUDFLARE_ACCESS_TEAM_DOMAIN|CLOUDFLARE_ACCESS_AUD)\"\\s*:\\s*\")[^\"]+",
+          replace: "$1",
+        },
+      ],
+    },
+    {
+      filePattern: [
+        "~/.pi/agent/auth.json",
+        "**/.pi/agent/auth.json",
+        "**/auth.json",
+      ],
+      cloakPattern: [
+        {
+          pattern: "(\"(?:token|access|refresh|accessToken|refreshToken|apiKey|secret|password|clientSecret|idToken|sessionToken|authorization)\"\\s*:\\s*\")[^\"]+",
+          replace: "$1",
+        },
+      ],
+    },
+  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -185,7 +233,7 @@ export function loadState(
     const config: CloakConfig = {
       ...DEFAULT_CONFIG,
       ...parsed,
-      patterns: parsed.patterns ?? [],
+      patterns: parsed.patterns ?? DEFAULT_CONFIG.patterns,
     };
 
     return {
@@ -200,9 +248,9 @@ export function loadState(
     return {
       configPath,
       config: DEFAULT_CONFIG,
-      rules: [],
+      rules: (DEFAULT_CONFIG.patterns ?? []).map(compileRule),
       error: isMissingFile
-        ? `pi-cloak config not found at ${configPath}`
+        ? undefined
         : `pi-cloak failed to load ${configPath}: ${error instanceof Error ? error.message : String(error)}`,
     };
   }

@@ -54,7 +54,6 @@ interface RuntimeState {
 // Defaults
 // ---------------------------------------------------------------------------
 
-const USER_CONFIG_PATH = join(getAgentDir(), "cloak.json");
 const BUNDLED_CONFIG_PATH = join(fileURLToPath(import.meta.url), "..", "cloak.json");
 const DEFAULT_CONFIG: CloakConfig = {
   enabled: true,
@@ -63,6 +62,16 @@ const DEFAULT_CONFIG: CloakConfig = {
   tryAllPatterns: true,
   patterns: [],
 };
+
+function getConfigSearchPaths(cwd: string = process.cwd()): string[] {
+  return [
+    join(cwd, ".pi", "cloak.json"),
+    join(cwd, ".agents", "cloak.json"),
+    join(homedir(), ".agents", "cloak.json"),
+    join(getAgentDir(), "cloak.json"),
+    BUNDLED_CONFIG_PATH,
+  ];
+}
 
 // ---------------------------------------------------------------------------
 // Utilities
@@ -188,47 +197,33 @@ function loadConfigAtPath(configPath: string): CloakConfig {
   };
 }
 
-export function loadState(
-  userConfigPath: string = USER_CONFIG_PATH,
-): RuntimeState {
-  // Try user's config first
-  try {
-    const config = loadConfigAtPath(userConfigPath);
-    return {
-      configPath: userConfigPath,
-      config,
-      rules: (config.patterns ?? []).map(compileRule),
-    };
-  } catch (error) {
-    const isMissingFile =
-      error instanceof Error && "code" in error && error.code === "ENOENT";
+export function loadState(cwd: string = process.cwd()): RuntimeState {
+  const paths = getConfigSearchPaths(cwd);
+  let lastError: string | undefined;
 
-    if (!isMissingFile) {
+  for (const configPath of paths) {
+    try {
+      const config = loadConfigAtPath(configPath);
       return {
-        configPath: userConfigPath,
-        config: DEFAULT_CONFIG,
-        rules: [],
-        error: `pi-cloak failed to load ${userConfigPath}: ${error instanceof Error ? error.message : String(error)}`,
+        configPath,
+        config,
+        rules: (config.patterns ?? []).map(compileRule),
       };
+    } catch (error) {
+      const isMissingFile =
+        error instanceof Error && "code" in error && error.code === "ENOENT";
+      if (!isMissingFile) {
+        lastError = `pi-cloak failed to load ${configPath}: ${error instanceof Error ? error.message : String(error)}`;
+      }
     }
   }
 
-  // Fallback to bundled defaults
-  try {
-    const config = loadConfigAtPath(BUNDLED_CONFIG_PATH);
-    return {
-      configPath: BUNDLED_CONFIG_PATH,
-      config,
-      rules: (config.patterns ?? []).map(compileRule),
-    };
-  } catch (error) {
-    return {
-      configPath: BUNDLED_CONFIG_PATH,
-      config: DEFAULT_CONFIG,
-      rules: [],
-      error: `pi-cloak failed to load bundled defaults at ${BUNDLED_CONFIG_PATH}: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
+  return {
+    configPath: paths[paths.length - 1]!,
+    config: DEFAULT_CONFIG,
+    rules: [],
+    error: lastError,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -436,12 +431,12 @@ export function cloakText(
 export default function (pi: ExtensionAPI) {
   let state = loadState();
 
-  const reloadConfig = () => {
-    state = loadState();
+  const reloadConfig = (cwd?: string) => {
+    state = loadState(cwd);
   };
 
   pi.on("session_start", async (_event, ctx) => {
-    reloadConfig();
+    reloadConfig(ctx.cwd);
 
     if (state.error && ctx.hasUI) {
       ctx.ui.notify(state.error, "warning");

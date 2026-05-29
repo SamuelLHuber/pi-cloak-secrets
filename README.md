@@ -22,7 +22,17 @@ pi -e npm:pi-cloak-secrets
 
 ## Configuration
 
-Works out of the box — no config file required. To customize, create `~/.pi/agent/cloak.json`:
+Works out of the box — no config file required. To customize, create a `cloak.json` at one of these locations (first found wins):
+
+| Priority | Path | Scope |
+|----------|------|-------|
+| 1 | `./.pi/cloak.json` | Project-local |
+| 2 | `./.agents/cloak.json` | Project-local (alternative) |
+| 3 | `~/.agents/cloak.json` | Global (alternative) |
+| 4 | `~/.pi/agent/cloak.json` | Global (pi agent dir) |
+| 5 | *(bundled)* | Extension defaults |
+
+Each session start re-evaluates the search, so switching projects picks up the correct local config.
 
 ```json
 {
@@ -35,24 +45,12 @@ Works out of the box — no config file required. To customize, create `~/.pi/ag
       "filePattern": "**/*.env*",
       "cloakPattern": "(=).+",
       "replace": "$1"
-    },
-    {
-      "filePattern": "**/*.vars*",
-      "cloakPattern": "(=).+",
-      "replace": "$1"
-    },
-    {
-      "filePattern": "**/*auth.json",
-      "cloakPattern": {
-        "pattern": "(\"(?:token|apiKey|secret|password)\"\\s*:\\s*\")[^\"]+",
-        "replace": "$1"
-      }
     }
   ]
 }
 ```
 
-If you define `patterns` in `cloak.json`, they replace the built-in defaults. If you omit `patterns`, the built-in defaults stay active.
+If you define `patterns` in your `cloak.json`, they **replace** the built-in defaults. If you omit `patterns`, the built-in defaults stay active.
 
 ### Built-in defaults
 

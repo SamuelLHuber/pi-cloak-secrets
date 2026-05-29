@@ -3,6 +3,7 @@ import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,61 +54,14 @@ interface RuntimeState {
 // Defaults
 // ---------------------------------------------------------------------------
 
-const DEFAULT_CONFIG_PATH = join(getAgentDir(), "cloak.json");
+const USER_CONFIG_PATH = join(getAgentDir(), "cloak.json");
+const BUNDLED_CONFIG_PATH = join(fileURLToPath(import.meta.url), "..", "cloak.json");
 const DEFAULT_CONFIG: CloakConfig = {
   enabled: true,
   cloakCharacter: "*",
   cloakLength: null,
   tryAllPatterns: true,
-  patterns: [
-    {
-      filePattern: "**/*.env*",
-      cloakPattern: "(=).+",
-      replace: "$1",
-    },
-    {
-      filePattern: "**/*.vars*",
-      cloakPattern: "(=).+",
-      replace: "$1",
-    },
-    {
-      filePattern: "**/*.opencode.json",
-      cloakPattern: "(\"apiKey\"\\s*:\\s*\")[^\"]+",
-      replace: "$1",
-    },
-    {
-      filePattern: "**/opencode.json",
-      cloakPattern: "(\"apiKey\"\\s*:\\s*\")[^\"]+",
-      replace: "$1",
-    },
-    {
-      filePattern: "**/config.toml",
-      cloakPattern: "(token\\s*=\\s*).+",
-      replace: "$1",
-    },
-    {
-      filePattern: ["**/*.json", "**/*.jsonc"],
-      cloakPattern: [
-        {
-          pattern: "(\"(?:CLOUDFLARE_ACCESS_TEAM_DOMAIN|CLOUDFLARE_ACCESS_AUD)\"\\s*:\\s*\")[^\"]+",
-          replace: "$1",
-        },
-      ],
-    },
-    {
-      filePattern: [
-        "~/.pi/agent/auth.json",
-        "**/.pi/agent/auth.json",
-        "**/auth.json",
-      ],
-      cloakPattern: [
-        {
-          pattern: "(\"(?:token|access|refresh|accessToken|refreshToken|apiKey|secret|password|clientSecret|idToken|sessionToken|authorization)\"\\s*:\\s*\")[^\"]+",
-          replace: "$1",
-        },
-      ],
-    },
-  ],
+  patterns: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -224,20 +178,24 @@ function compileRule(rule: CloakRuleConfig): CompiledCloakRule {
 // State loading
 // ---------------------------------------------------------------------------
 
-export function loadState(
-  configPath: string = DEFAULT_CONFIG_PATH,
-): RuntimeState {
-  try {
-    const raw = readFileSync(configPath, "utf8");
-    const parsed = JSON.parse(raw) as CloakConfig;
-    const config: CloakConfig = {
-      ...DEFAULT_CONFIG,
-      ...parsed,
-      patterns: parsed.patterns ?? DEFAULT_CONFIG.patterns,
-    };
+function loadConfigAtPath(configPath: string): CloakConfig {
+  const raw = readFileSync(configPath, "utf8");
+  const parsed = JSON.parse(raw) as CloakConfig;
+  return {
+    ...DEFAULT_CONFIG,
+    ...parsed,
+    patterns: parsed.patterns ?? [],
+  };
+}
 
+export function loadState(
+  userConfigPath: string = USER_CONFIG_PATH,
+): RuntimeState {
+  // Try user's config first
+  try {
+    const config = loadConfigAtPath(userConfigPath);
     return {
-      configPath,
+      configPath: userConfigPath,
       config,
       rules: (config.patterns ?? []).map(compileRule),
     };
@@ -245,13 +203,30 @@ export function loadState(
     const isMissingFile =
       error instanceof Error && "code" in error && error.code === "ENOENT";
 
+    if (!isMissingFile) {
+      return {
+        configPath: userConfigPath,
+        config: DEFAULT_CONFIG,
+        rules: [],
+        error: `pi-cloak failed to load ${userConfigPath}: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  // Fallback to bundled defaults
+  try {
+    const config = loadConfigAtPath(BUNDLED_CONFIG_PATH);
     return {
-      configPath,
+      configPath: BUNDLED_CONFIG_PATH,
+      config,
+      rules: (config.patterns ?? []).map(compileRule),
+    };
+  } catch (error) {
+    return {
+      configPath: BUNDLED_CONFIG_PATH,
       config: DEFAULT_CONFIG,
-      rules: (DEFAULT_CONFIG.patterns ?? []).map(compileRule),
-      error: isMissingFile
-        ? undefined
-        : `pi-cloak failed to load ${configPath}: ${error instanceof Error ? error.message : String(error)}`,
+      rules: [],
+      error: `pi-cloak failed to load bundled defaults at ${BUNDLED_CONFIG_PATH}: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }

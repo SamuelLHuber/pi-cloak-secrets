@@ -10,6 +10,8 @@ Inspired by the secret masking setup in [dmmulroy/.dotfiles](https://github.com/
 
 ## Install
 
+### From npm (recommended)
+
 ```bash
 pi install npm:pi-cloak-secrets
 ```
@@ -18,6 +20,12 @@ Or try it without installing:
 
 ```bash
 pi -e npm:pi-cloak-secrets
+```
+
+### From git
+
+```bash
+pi install git:https://github.com/SamuelLHuber/pi-cloak-secrets
 ```
 
 ## Configuration

@@ -1,8 +1,15 @@
 {
   "name": "pi-cloak-secrets",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "scripts": { "check": "tsc --noEmit", "test": "node --test test/*.test.mjs" },
   "description": "Mask secrets in files before they reach the AI — configurable regex cloaking for pi",
-  "keywords": ["pi-package", "pi-extension", "secrets", "privacy", "masking"],
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "secrets",
+    "privacy",
+    "masking"
+  ],
   "type": "module",
   "main": "index.ts",
   "files": [
@@ -18,5 +25,10 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "1.0.0",
+    "@types/node": "22.20.5",
+    "typescript": "6.0.3"
   }
 }
